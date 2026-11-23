@@ -18,12 +18,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-
+      
     steps:
       - name: Checkout builder repo
         uses: actions/checkout@v5
-        with:
-          path: builder-repo
 
       - name: Clone official frappe_docker
         run: git clone --depth 1 https://github.com/frappe/frappe_docker.git /tmp/frappe_docker
@@ -42,6 +40,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify apps.json
+        run: |
+          ls -la "${{ github.workspace }}/apps.json"
+          python3 -m json.tool "${{ github.workspace }}/apps.json"
+       
       - name: Build and push layered image
         uses: docker/build-push-action@v7
         with:
@@ -56,4 +59,4 @@ jobs:
             FRAPPE_PATH=https://github.com/frappe/frappe
             FRAPPE_BRANCH=${{ github.event.inputs.frappe_branch }}
           secrets: |
-            apps_json=builder-repo/apps.json
+            apps_json=${{ github.workspace }}/apps.json

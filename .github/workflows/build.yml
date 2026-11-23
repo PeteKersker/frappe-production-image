@@ -9,7 +9,7 @@ env:
   FRAPPE_PATH: https://github.com/frappe/frappe
   FRAPPE_BRANCH: develop
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/my-frappe
+  IMAGE_NAME: petekersker/my-frappe
 
 jobs:
   build:

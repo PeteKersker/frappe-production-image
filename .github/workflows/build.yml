@@ -15,14 +15,14 @@ on:
       image_tag:
         description: "Image Tag"
         required: true
-        default: "version-16"  
+        default: "version-16"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: petekersker/my-frappe
-  FRAPPE_PATH: https://github.com/frappe/frappe
+  FRAPPE_PATH: https://github.com
   FRAPPE_BRANCH: ${{ github.event.inputs.frappe_branch || 'version-16' }}
-  
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -41,15 +41,8 @@ jobs:
           ref: main
           path: frappe_docker
 
-      - name: Read and validate apps.json
-        id: apps
-        run: |
-          jq empty apps.json
-          {
-            echo 'json<<EOF'
-            cat apps.json
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
+      - name: Validate apps.json
+        run: jq empty apps.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -73,5 +66,5 @@ jobs:
           build-args: |
             FRAPPE_PATH=${{ env.FRAPPE_PATH }}
             FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}
-          secrets: |
-            "apps_json=${{ steps.apps.outputs.json }}"
+          secret-files: |
+            "apps_json=${{ github.workspace }}/apps.json"

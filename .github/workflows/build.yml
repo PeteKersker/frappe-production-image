@@ -20,7 +20,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: petekersker/my-frappe
-  FRAPPE_PATH: https://github.com
+  FRAPPE_PATH: https://github.com/frappe/frappe
   FRAPPE_BRANCH: ${{ github.event.inputs.frappe_branch || 'version-16' }}
 
 jobs:

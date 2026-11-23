@@ -1,18 +1,18 @@
 [
   {
     "url": "https://github.com/frappe/builder",
-    "branch": "develop"
+    "branch": "master"
   },
   {
-    "url": "https://github.com/frappe/lms",
-    "branch": "version-16"
+  "url": "https://github.com/frappe/blog",
+  "branch": "version-16"
   },
   {
     "url": "https://github.com/frappe/frappe-books",
     "branch": "version-16"
   },
   {
-    "url": "https://YOUR_GITHUB_PAT@github.com/YOUR_USERNAME/YOUR_CUSTOM_APP.git",
-    "branch": "main"
+    "url": "https://github.com/PeteKersker/mylife.git",
+    "branch": "development"
   }
 ]

@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout builder repo
         uses: actions/checkout@v5
+        with:
+          path: builder-repo
 
       - name: Clone official frappe_docker
         run: git clone --depth 1 https://github.com/frappe/frappe_docker.git /tmp/frappe_docker
@@ -32,7 +34,7 @@ jobs:
           driver-opts: |
             env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
             env.BUILDKIT_STEP_LOG_MAX_SPEED=-1
-            
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -54,4 +56,4 @@ jobs:
             FRAPPE_PATH=https://github.com/frappe/frappe
             FRAPPE_BRANCH=${{ github.event.inputs.frappe_branch }}
           secrets: |
-            apps_json=./apps.json
+            apps_json=builder-repo/apps.json

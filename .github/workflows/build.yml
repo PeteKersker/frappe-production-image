@@ -1,18 +1,25 @@
-name: Build Frappe Production Image
+name: Build Custom Frappe Image
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      frappe_branch:
+        description: "Frappe Branch"
+        required: true
+        default: "version-16"
+      image_tag:
+        description: "Image Tag"
+        required: true
+        default: "16"
 
 env:
-  FRAPPE_PATH: https://github.com/frappe/frappe
-  FRAPPE_BRANCH: develop
   REGISTRY: ghcr.io
   IMAGE_NAME: petekersker/my-frappe
+  FRAPPE_PATH: https://github.com/frappe/frappe
+  FRAPPE_BRANCH: ${{ github.event.inputs.frappe_branch }}
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,64 +29,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU (required for Docker buildx)
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push with apps.json baked in
-        uses: docker/build-push-action@v6
+      - name: Clone frappe_docker
+        run: git clone --depth 1 https://github.com/frappe/frappe_docker.git /tmp/frappe_docker
+
+      - name: Copy apps.json to build directory
+        run: |
+          cp apps.json /tmp/frappe_docker/
+          chmod +644 /tmp/frappe_docker/apps.json
+
+      - name: Build and push layered image
+        uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Containerfile
+          context: /tmp/frappe_docker
+          file: /tmp/frappe_docker/images/layered/Containerfile
           push: true
+          no-cache: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}-${{ github.run_number }}
           build-args: |
             FRAPPE_PATH=${{ env.FRAPPE_PATH }}
             FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU (required for Docker buildx)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build image locally
+      - name: Save Docker Image (for local download)
         run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }} .
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} > app-image.tar
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}-${{ github.run_number }} > app-image.tar
+          echo "Images saved to app-image.tar"
 
-      - name: Push locally built image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
-      - name: Download image
-        run: |
-          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }} > app-image.tar
-
-      - name: Upload image artifact
+      - name: Upload Image Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-image
           path: app-image.tar
 
+  # Optional: Download image on local setup
+  download-image:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-image
+          path: ./

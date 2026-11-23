@@ -1,0 +1,53 @@
+name: Build Custom Frappe Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      frappe_branch:
+        description: "Frappe Branch"
+        required: true
+        default: "version-16"
+      image_tag:
+        description: "Image Tag"
+        required: true
+        default: "16"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout builder repo
+        uses: actions/checkout@v4
+
+      - name: Clone official frappe_docker
+        run: git clone --depth 1 https://github.com/frappe/frappe_docker.git /tmp/frappe_docker
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push layered image
+        uses: docker/build-push-action@v6
+        with:
+          context: /tmp/frappe_docker
+          file: /tmp/frappe_docker/images/layered/Containerfile
+          push: true
+          no-cache: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/my-frappe:${{ github.event.inputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/my-frappe:${{ github.event.inputs.image_tag }}-${{ github.run_number }}
+          build-args: |
+            FRAPPE_PATH=https://github.com/frappe/frappe
+            FRAPPE_BRANCH=${{ github.event.inputs.frappe_branch }}
+          secrets: |
+            apps_json=./apps.json

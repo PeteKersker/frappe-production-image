@@ -41,12 +41,15 @@ jobs:
           ref: main
           path: frappe_docker
 
-      - name: Validate and encode apps.json
+      - name: Read and validate apps.json
         id: apps
         run: |
           jq empty apps.json
-          APPS_B64=$(base64 -w 0 apps.json)
-          echo "apps_json_base64=$APPS_B64" >> $GITHUB_OUTPUT
+          {
+            echo 'json<<EOF'
+            cat apps.json
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -70,4 +73,5 @@ jobs:
           build-args: |
             FRAPPE_PATH=${{ env.FRAPPE_PATH }}
             FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}
-            APPS_JSON_BASE64=${{ steps.apps.outputs.apps_json_base64 }}
+          secrets: |
+            "apps_json=${{ steps.apps.outputs.json }}"

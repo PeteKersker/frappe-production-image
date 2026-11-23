@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - 'apps.json'
-      - '.github/workflows/build-frappe.yml'
-  workflow_dispatch: # Allows manual trigger when you update an app's repo
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -30,6 +30,9 @@ jobs:
           ref: main
           path: frappe_docker
 
+      - name: Validate apps.json
+        run: jq empty apps.json
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -47,10 +50,10 @@ jobs:
           file: ./frappe_docker/images/layered/Containerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:version-16
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             FRAPPE_PATH=https://github.com/frappe/frappe
             FRAPPE_BRANCH=version-16
-          secrets: |
-            "apps_json=${{ vars.APPS_JSON }}"
+          secret-files: |
+            "apps_json=./apps.json"
